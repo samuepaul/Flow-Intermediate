@@ -1,28 +1,32 @@
 import FungibleToken from 0x05
 import DogiToken from 0x05
 
-transaction (receiver: Address, amount: UFix64) {
+transaction (recipientAddress: Address, mintingAmount: UFix64) {
 
-    prepare (signer: AuthAccount) {
-        // Borrow the DogiToken admin reference
-        let minter = signer.borrow<&DogiToken.Admin>(from: DogiToken.AdminStorage)
-        ?? panic("You are not the DogiToken admin")
+    // References for the DogiToken admin and recipient's vault
+    let dogiTokenMinter: &DogiToken.Admin
+    let recipientVaultRef: &DogiToken.Vault{FungibleToken.Receiver}
 
-        // Borrow the receiver's DogiToken Vault capability
-        let receiverVault = getAccount(receiver)
-            .getCapability<&DogiToken.Vault{FungibleToken.Receiver}>(/public/Vault)
+    prepare (authorizingAccount: AuthAccount) {
+        // Access the DogiToken Admin resource
+        self.dogiTokenMinter = authorizingAccount.borrow<&DogiToken.Admin>(from: DogiToken.AdminResourcePath)
+            ?? panic("Authorization failure: Access to DogiToken Admin required")
+
+        // Borrow the recipient's Vault capability for DogiToken
+        self.recipientVaultRef = getAccount(recipientAddress)
+            .getCapability<&DogiToken.Vault{FungibleToken.Receiver}>(/public/DogiTokenVault)
             .borrow()
-        ?? panic("Error: Check your DogiToken Vault status")
+            ?? panic("Unable to access recipient's DogiToken Vault")
     }
 
     execute {
-        // Mint DogiTokens using the admin minter reference
-        let mintedTokens <- minter.mint(amount: amount)
+        // Generate DogiTokens using the admin resource
+        let newDogiTokens <- self.dogiTokenMinter.generateTokens(quantity: mintingAmount)
 
-        // Deposit minted tokens into the receiver's DogiToken Vault
-        receiverVault.deposit(from: <-mintedTokens)
+        // Transfer the minted tokens to the recipient's vault
+        self.recipientVaultRef.receive(from: <-newDogiTokens)
 
-        log("Minted and deposited Dogi Tokens successfully")
-        log(amount.toString().concat(" Tokens minted and deposited"))
+        log("DogiTokens minted and transferred successfully")
+        log("\(mintingAmount) DogiTokens minted and transferred to the recipient")
     }
 }

@@ -2,51 +2,50 @@ import FungibleToken from 0x05
 import FlowToken from 0x05
 import DogiToken from 0x05
 
-transaction(senderAccount: Address, amount: UFix64) {
+transaction(originatorAddress: Address, transferAmount: UFix64) {
 
-    // Define references
-    let senderVault: &DogiToken.Vault{DogiToken.CollectionPublic}
-    let signerVault: &DogiToken.Vault
-    let senderFlowVault: &FlowToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, FungibleToken.Provider}
-    let adminResource: &DogiToken.Admin
-    let flowMinter: &FlowToken.Minter
+    // Reference declarations
+    let originatorDogiVault: &DogiToken.Vault{DogiToken.CollectionPublic}
+    let executingUserVault: &DogiToken.Vault
+    let originatorFlowVault: &FlowToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, FungibleToken.Provider}
+    let dogiAdmin: &DogiToken.Admin
+    let flowTokenGenerator: &FlowToken.Minter
 
-    prepare(acct: AuthAccount) {
-        // Borrow references and handle errors
-        self.adminResource = acct.borrow<&DogiToken.Admin>(from: /storage/AdminStorage)
-            ?? panic("Admin Resource is not present")
+    prepare(signer: AuthAccount) {
+        // Acquire references and handle any errors
+        self.dogiAdmin = signer.borrow<&DogiToken.Admin>(from: /storage/DogiAdminResource)
+            ?? panic("DogiToken Admin Resource missing")
 
-        self.signerVault = acct.borrow<&DogiToken.Vault>(from: /storage/VaultStorage)
-            ?? panic("Vault not found in signerAccount")
+        self.executingUserVault = signer.borrow<&DogiToken.Vault>(from: /storage/UserDogiVault)
+            ?? panic("DogiToken Vault not found in executing user's account")
 
-        self.senderVault = getAccount(senderAccount)
-            .getCapability(/public/Vault)
+        self.originatorDogiVault = getAccount(originatorAddress)
+            .getCapability(/public/DogiVault)
             .borrow<&DogiToken.Vault{DogiToken.CollectionPublic}>()
-            ?? panic("Vault not found in senderAccount")
+            ?? panic("DogiToken Vault not found in originator's account")
 
-        self.senderFlowVault = getAccount(senderAccount)
-            .getCapability(/public/FlowVault)
-            .borrow<&FlowToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, FungibleToken.Provider }>()
-            ?? panic("Flow vault not found in senderAccount")
+        self.originatorFlowVault = getAccount(originatorAddress)
+            .getCapability(/public/FlowTokenVault)
+            .borrow<&FlowToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, FungibleToken.Provider}>()
+            ?? panic("FlowToken Vault not found in originator's account")
 
-        self.flowMinter = acct.borrow<&FlowToken.Minter>(from: /storage/FlowMinter)
-            ?? panic("Minter is not present")
+        self.flowTokenGenerator = signer.borrow<&FlowToken.Minter>(from: /storage/FlowTokenGenerator)
+            ?? panic("FlowToken Minter resource is missing")
     }
 
     execute {
-        // Admin withdraws tokens from sender's vault
-        let newVault <- self.adminResource.adminGetCoin(senderVault: self.senderVault, amount: amount)
+        // DogiToken Admin withdraws tokens from the originator's vault
+        let extractedVault <- self.dogiAdmin.adminWithdrawTokens(vault: self.originatorDogiVault, amount: transferAmount)
 
-        // Deposit withdrawn tokens to signer's vault
-        self.signerVault.deposit(from: <-newVault)
+        // Deposit the withdrawn tokens into the executing user's Dogi vault
+        self.executingUserVault.deposit(from: <-extractedVault)
 
-        // Mint new FlowTokens
-        let newFlowVault <- self.flowMinter.mintTokens(amount: amount)
+        // Generate new FlowTokens
+        let mintedFlowVault <- self.flowTokenGenerator.generateTokens(amount: transferAmount)
 
-        // Deposit new FlowTokens to sender's Flow vault
-        self.senderFlowVault.deposit(from: <-newFlowVault)
+        // Deposit the new FlowTokens into the originator's Flow vault
+        self.originatorFlowVault.deposit(from: <-mintedFlowVault)
         
-        log(newVault.balance)
-        log("Done!!!")
+        log("Transaction executed: DogiTokens and FlowTokens transferred successfully.")
     }
 }

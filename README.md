@@ -1,87 +1,74 @@
-# Fungible-Token-Project
+# Fungible Token Project on Flow Blockchain
 
-This repository contains a Flow blockchain project implementing a custom Fungible Token contract and related transactions and scripts. The project is divided into several parts, each addressing specific aspects of token management and interactions.
+Welcome to the Fungible Token Project repository. This repository is dedicated to a comprehensive implementation of a custom Fungible Token contract on the Flow blockchain, accompanied by a suite of transactions and scripts. The project is meticulously segmented into various parts, each focusing on different facets of token management and interactions.
 
-## Part 1
+## Overview
 
-### Contract
+### Core Contract Implementation
 
-The custom Fungible Token contract is implemented in the `FlowToken` contract. It includes the following key features:
+**Contract - FlowToken:**
+- Introduces the `FlowToken` contract encapsulating key features like:
+  - Owner-controlled minting process.
+  - A `Vault` resource for maintaining token balances.
+  - An array of transactions and scripts for robust token management.
 
-- Minting functionality controlled by the contract owner.
-- Vault resource for storing token balances.
-- Various transactions and scripts to manage tokens.
+**Code Insights:**
+- Highlights the `deposit` function within the `Vault` resource, ensuring secure token transfer and preventing double-counting through meticulous balance management.
 
-### Code Walk-Through
+### Fundamental Transactions and Scripts
 
-The `deposit` function within the `Vault` resource zeroes out the balance of an incoming vault before destroying it. This ensures that the vault's tokens are transferred and prevents double counting. When the new vault is created, it holds the transferred tokens, preventing loss of tokens during the transition.
+**Transactions:**
+- **MINT:** Facilitates the minting of tokens to designated recipients.
+- **SETUP:** Streamlines the initialization of a user's vault in account storage.
+- **TRANSFER:** Enables users to transfer tokens to different addresses.
 
-## Part 2
+**Scripts:**
+- **READ BALANCE:** Retrieves the token balance in a user’s vault.
+- **SETUP VALIDATION:** Confirms correct vault setup.
+- **TOTAL SUPPLY CHECK:** Reports the total circulating supply of tokens.
 
-### Transactions
+### Transaction and Script Enhancements
 
-- **MINT:** Mint tokens to a recipient.
-- **SETUP:** Properly sets up a vault inside a user's account storage.
-- **TRANSFER:** Allows a user to transfer tokens to a different address.
+**Focus:**
+- Improving **SETUP** transaction for remedying improperly set up vaults.
+- Enhancing **READ BALANCE** script for compatibility with non-standard vault setups.
 
-### Scripts
+**Key Features:**
+- Resource identifiers for verifying token types.
+- Resource capabilities for vault authenticity validation.
 
-- **READ BALANCE:** Reads the balance of a user's vault.
-- **SETUP CORRECTLY?:** Returns true if the user's vault is set up correctly and false if not.
-- **TOTAL SUPPLY:** Returns the total supply of tokens in existence.
+### Contract and Transaction Augmentation
 
-## Part 3
+**Admin Capabilities:**
+- Empowers the `Admin` to withdraw tokens from user vaults and deposit equivalent $FLOW tokens.
 
-### Transactions and Scripts Modification
+**New Transaction:**
+- **Admin Withdraw and Deposit:** Admin-exclusive transaction for token management.
 
-- **SETUP:** Identifies and fixes poorly set up vaults.
-- **READ BALANCE:** Works with poorly set up vaults and temporarily fixes them to guarantee balance retrieval.
+### Advanced Scripting
 
-Guaranteeing balance retrieval involves:
+**Scripts:**
+- **BALANCE SUMMARY:** Presents a summary of a user’s $FLOW and custom token vault balances.
+- **VAULT OVERVIEW:** Provides a detailed overview of all recognized Fungible Token vaults in a user’s storage.
 
-1. Using resource identifiers to ensure the correct token type. 
-2. Using resource capabilities to validate the authenticity of the vault.
+### Swap Contract Integration
 
-## Part 4
+**Swap Contract:**
+- The `Swap` contract is a pivotal feature allowing users to exchange $FLOW tokens for custom tokens, based on the duration since their last exchange.
 
-### Contract Modification
+**Swap Mechanics:**
+- Utilizes a custom identity resource and user's $FLOW vault reference to authenticate user identity and facilitate secure token swaps.
 
-The `Admin` is granted the ability to withdraw tokens from a user's vault and deposit equivalent $FLOW tokens.
+## Project Conclusion
 
-### Transactions
+This repository exemplifies a full-fledged Fungible Token contract deployment on the Flow blockchain, showcasing an array of functionalities including token minting, vault setup, token transfer, and token swapping. The project is systematically structured for enhanced comprehensibility and ease of navigation.
 
-- **Admin Withdraw and Deposit:** Allows the Admin to withdraw tokens and deposit $FLOW tokens.
-
-## Part 5
-
-### Scripts
-
-- **Balance Summary:** Returns the balance of the user's $FLOW vault and custom vault.
-- **Vault Overview:** Neatly returns information about all official Fungible Token vaults in the user's account storage.
-
-## Part 6
-
-### Swap Contract
-
-The `Swap` contract enables users to deposit $FLOW tokens and receive custom tokens in return, with the received amount based on the time since their last swap.
-
-### Swapping Functionality
-
-Two methods are implemented to ensure user identity:
-
-1. Using a custom identity resource to represent identity.
-2. Using a reference to the user's $FLOW vault to prove authenticity.
-
-## Conclusion
-
-This Flow Token project demonstrates the implementation of a custom Fungible Token contract and its various functionalities. The repository includes contracts, transactions, and scripts for managing tokens, setting up vaults, transferring tokens, and swapping tokens. The code and functionalities have been organized into distinct parts to make the project more understandable and manageable.
-
-For detailed usage and instructions, please refer to the individual code files and comments within the repository.
+For detailed guidelines and instructions, please refer to the individual code files and accompanying comments within this repository.
 
 ## Author
 
 [Samuel Paul](https://github.com/samuepaul)
 
-## License
+## Licensing
 
-This project is licensed under the [MIT License](LICENSE).
+This project is released under the [MIT License](LICENSE), fostering open and collaborative development.

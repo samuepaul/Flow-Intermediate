@@ -1,26 +1,29 @@
 import FungibleToken from 0x05
 import DogiToken from 0x05
 
-transaction(receiverAccount: Address, amount: UFix64) {
+transaction(targetAddress: Address, transferAmount: UFix64) {
 
-    // Define references
-    let signerVault: &DogiToken.Vault
-    let receiverVault: &DogiToken.Vault{FungibleToken.Receiver}
+    // References for the DogiToken vaults
+    let senderVaultRef: &DogiToken.Vault
+    let recipientVaultRef: &DogiToken.Vault{FungibleToken.Receiver}
 
-    prepare(acct: AuthAccount) {
-        // Borrow references and handle errors
-        self.signerVault = acct.borrow<&DogiToken.Vault>(from: /storage/VaultStorage)
-            ?? panic("Vault not found in senderAccount")
+    prepare(authorizedAccount: AuthAccount) {
+        // Access the sender's DogiToken vault
+        self.senderVaultRef = authorizedAccount.borrow<&DogiToken.Vault>(from: /storage/DogiVaultStorage)
+            ?? panic("Sender's DogiToken Vault not found")
 
-        self.receiverVault = getAccount(receiverAccount)
-            .getCapability(/public/Vault)
+        // Borrow the recipient's DogiToken vault capability
+        self.recipientVaultRef = getAccount(targetAddress)
+            .getCapability(/public/ReceiverVault)
             .borrow<&DogiToken.Vault{FungibleToken.Receiver}>()
-            ?? panic("Vault not found in receiverAccount")
+            ?? panic("Recipient's DogiToken Vault not found")
     }
 
     execute {
-        // Withdraw tokens from signer's vault and deposit into receiver's vault
-        self.receiverVault.deposit(from: <-self.signerVault.withdraw(amount: amount))
-        log("Tokens transferred")
+        // Transfer tokens from the sender's vault to the recipient's vault
+        let withdrawnTokens <- self.senderVaultRef.withdraw(amount: transferAmount)
+        self.recipientVaultRef.deposit(from: <-withdrawnTokens)
+
+        log("DogiToken transfer successful")
     }
 }

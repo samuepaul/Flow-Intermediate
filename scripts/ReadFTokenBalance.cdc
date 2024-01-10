@@ -1,27 +1,27 @@
 import FungibleToken from 0x05
 
-// Function to get balances of FungibleToken vaults for a given user
-pub fun main(user: Address): {UInt64: UFix64} {
+// Function to fetch balances of various FungibleToken vaults associated with a user
+pub fun main(accountAddress: Address): {UInt64: UFix64} {
 
-    // Get the user's authentication account
-    let authAccount = getAuthAccount(user)
+    // Accessing the user's authorized account
+    let userAccount = getAuthAccount(accountAddress)
     
-    // Dictionary to store vault UUIDs and balances
-    var vaults: {UInt64: UFix64} = {}
+    // Creating a map to hold vault identifiers and their respective balances
+    var vaultBalances: {UInt64: UFix64} = {}
 
-    // Iterate through each stored item in the account's storage
-    authAccount.forEachStored(fun(path: StoragePath, type: Type): Bool {
-        // Check if the stored item is a FungibleToken vault
-        if type.isSubtype(of: Type<@FungibleToken.Vault>()) {
-            // Borrow reference to the FungibleToken vault
-            let vaultRef = authAccount.borrow<&FungibleToken.Vault>(from: path)!
-            // Store the vault's UUID and balance in the dictionary
-            vaults[vaultRef.uuid] = vaultRef.balance
+    // Loop over each item stored in the user's account
+    userAccount.forEachStored(fun(storagePath: StoragePath, storedType: Type): Bool {
+        // Verify if the stored item is a FungibleToken vault
+        if storedType.isSubtype(of: Type<@FungibleToken.Vault>()) {
+            // Get a reference to the vault at the storage path
+            let tokenVaultRef = userAccount.borrow<&FungibleToken.Vault>(from: storagePath)!
+            // Add the vault's unique identifier and balance to the map
+            vaultBalances[tokenVaultRef.uuid] = tokenVaultRef.balance
         }
-        // Continue iterating
+        // Continue the loop
         return true
     })
 
-    // Return the dictionary of vault UUIDs and balances
-    return vaults
+    // Output the map containing vault identifiers and their balances
+    return vaultBalances
 }

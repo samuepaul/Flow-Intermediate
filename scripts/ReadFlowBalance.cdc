@@ -1,26 +1,26 @@
 import FungibleToken from 0x05
 import FlowToken from 0x05
 
-// Function to retrieve the balance of a FlowToken vault
-pub fun getFlowVaultBalance(account: Address): UFix64? {
+// Function to check the balance in a FlowToken storage
+pub fun checkFlowTokenStorageBalance(userAddress: Address): UFix64? {
 
-    // Borrow the public FlowToken vault capability from the given account
-    let publicFlowVault: &FlowToken.Vault{FungibleToken.Balance}?
-        = getAccount(account)
-            .getCapability(/public/FlowVault)
+    // Accessing the public FlowToken storage capability of the specified user address
+    let flowTokenStorage: &FlowToken.Vault{FungibleToken.Balance}?
+        = getAccount(userAddress)
+            .getCapability(/public/FlowTokenStorage)
             .borrow<&FlowToken.Vault{FungibleToken.Balance}>()
             
-    // Check if the borrowing was successful
-    if let balance = publicFlowVault?.balance {
-        return balance
+    // Verify if access to the storage was successful and return the balance
+    if let storageBalance = flowTokenStorage?.balance {
+        return storageBalance
     } else {
-        // Panic if borrowing failed or the Flow vault does not exist
-        return panic("Flow vault does not exist or borrowing failed")
+        // Issue an error if access to the FlowToken storage fails
+        return panic("Cannot access FlowToken storage or it does not exist")
     }
 }
 
-// Entry point of the script
-pub fun main(_account: Address): UFix64? {
-    // Call the getFlowVaultBalance function and return the result
-    return getFlowVaultBalance(account: _account)
+// Script's main entry point
+pub fun main(userAcc: Address): UFix64? {
+    // Retrieve and return the balance from the FlowToken storage
+    return checkFlowTokenStorageBalance(userAddress: userAcc)
 }

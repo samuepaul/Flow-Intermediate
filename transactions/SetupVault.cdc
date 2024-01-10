@@ -3,28 +3,28 @@ import DogiToken from 0x05
 
 transaction() {
 
-    // Define references
-    let userVault: &DogiToken.Vault{FungibleToken.Balance, FungibleToken.Provider, FungibleToken.Receiver, DogiToken.CollectionPublic}?
-    let account: AuthAccount
+    // References for the DogiToken vault and the account
+    let dogiVaultRef: &DogiToken.Vault{FungibleToken.Balance, FungibleToken.Provider, FungibleToken.Receiver, DogiToken.CollectionPublic}?
+    let authAccount: AuthAccount
 
-    prepare(acct: AuthAccount) {
+    prepare(account: AuthAccount) {
 
-        // Borrow vault capability and set account reference
-        self.userVault = acct.getCapability(/public/Vault)
+        // Attempt to access the DogiToken vault capability
+        self.dogiVaultRef = account.getCapability(/public/DogiTokenVault)
             .borrow<&DogiToken.Vault{FungibleToken.Balance, FungibleToken.Provider, FungibleToken.Receiver, DogiToken.CollectionPublic}>()
 
-        self.account = acct
+        self.authAccount = account
     }
 
     execute {
-        if self.userVault == nil {
-            // Create and link an empty vault if none exists
-            let emptyVault <- DogiToken.createEmptyVault()
-            self.account.save(<-emptyVault, to: /storage/VaultStorage)
-            self.account.link<&DogiToken.Vault{FungibleToken.Balance, FungibleToken.Provider, FungibleToken.Receiver, DogiToken.CollectionPublic}>(/public/Vault, target: /storage/VaultStorage)
-            log("Empty vault created and linked")
+        if self.dogiVaultRef == nil {
+            // If no DogiToken vault exists, create and link a new one
+            let newVault <- DogiToken.createNewVault()
+            self.authAccount.save(<-newVault, to: /storage/DogiTokenVaultStorage)
+            self.authAccount.link<&DogiToken.Vault{FungibleToken.Balance, FungibleToken.Provider, FungibleToken.Receiver, DogiToken.CollectionPublic}>(/public/DogiTokenVault, target: /storage/DogiTokenVaultStorage)
+            log("A new DogiToken vault has been created and linked")
         } else {
-            log("Vault already exists and is properly linked")
+            log("Existing DogiToken vault found and accessible")
         }
     }
 }

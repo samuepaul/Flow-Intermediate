@@ -2,7 +2,7 @@ import DogiToken from 0x05
 
 pub fun main() {
 
-  // Log the total supply of the Token                 
-  log(DogiToken.totalSupply)
+  // Output the current total supply of DogiToken
+  log("Current DogiToken Supply: \(DogiToken.totalSupply)")
 
 }

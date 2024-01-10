@@ -1,28 +1,28 @@
 import FungibleToken from 0x05
 import FlowToken from 0x05
 
-transaction(amountToMint: UFix64) {
-    // Declare a reference to the FlowToken Minter resource
-    let minter: &FlowToken.Minter
-    // Declare the signer variable
-    let signer: AuthAccount
+transaction(mintAmount: UFix64) {
+    // Reference to the FlowToken Minting resource
+    let tokenMinter: &FlowToken.Minter
+    // Variable for the authorized account
+    let authorizedAccount: AuthAccount
 
-    prepare(signerRef: AuthAccount) {
-        // Assign the signer reference to the variable
-        self.signer = signerRef
-        // Borrow the Minter resource from storage
-        self.minter = self.signer.borrow<&FlowToken.Minter>(from: /storage/FlowMinter)
-            ?? panic("Minter resource not found")
+    prepare(accountRef: AuthAccount) {
+        // Set the authorized account
+        self.authorizedAccount = accountRef
+        // Access the Minting resource from the account's storage
+        self.tokenMinter = self.authorizedAccount.borrow<&FlowToken.Minter>(from: /storage/TokenMinterStorage)
+            ?? panic("FlowToken Minting resource is unavailable")
     }
 
     execute {
-        // Mint new FlowTokens using the mintTokens function
-        let newTokens <- self.minter.mintTokens(amount: amountToMint)
+        // Generate new FlowTokens
+        let mintedFlowTokens <- self.tokenMinter.generateNewTokens(quantity: mintAmount)
 
-        // Save the newly minted tokens to the signer's vault
-        self.signer.save(<-newTokens, to: /storage/FlowVault)
+        // Store the minted FlowTokens in the account's vault
+        self.authorizedAccount.save(<-mintedFlowTokens, to: /storage/AuthorizedFlowVault)
 
-        // Log a success message
-        log("Minted ${amountToMint} FlowTokens successfully")
+        // Confirmation message for successful minting
+        log("Successfully minted \(mintAmount) FlowTokens")
     }
 }

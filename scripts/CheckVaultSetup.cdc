@@ -1,13 +1,13 @@
 import FungibleToken from 0x05
 import DogiToken from 0x05
 
-pub fun main(account: Address) {
+pub fun main(userAddress: Address) {
 
-    // Borrow the public vault capability and handle errors
-    let publicVault = getAccount(account)
-        .getCapability(/public/Vault)
+    // Access the public vault capability and manage potential errors
+    let userPublicVaultCapability = getAccount(userAddress)
+        .getCapability(/public/DogiTokenVault)
         .borrow<&DogiToken.Vault{FungibleToken.Balance}>()
-        ?? panic("Vault not found, setup might be incomplete")
+        ?? panic("Unable to find the DogiToken Vault. Initialization may not be complete.")
 
-    log("Vault setup verified successfully")
+    log("DogiToken Vault is correctly set up for the user.")
 }

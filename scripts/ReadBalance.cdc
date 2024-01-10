@@ -1,43 +1,43 @@
 import FungibleToken from 0x05
 import DogiToken from 0x05
 
-pub fun main(account: Address) {
+pub fun main(userAccount: Address) {
 
-    // Attempt to borrow PublicVault capability
-    let publicVault: &DogiToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, DogiToken.CollectionPublic}? =
-        getAccount(account).getCapability(/public/Vault)
+    // Try to access the PublicVault capability
+    let userVault: &DogiToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, DogiToken.CollectionPublic}? =
+        getAccount(userAccount).getCapability(/public/DogiTokenVault)
             .borrow<&DogiToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, DogiToken.CollectionPublic}>()
 
-    if (publicVault == nil) {
-        // Create and link an empty vault if capability is not present
-        let newVault <- DogiToken.createEmptyVault()
-        getAuthAccount(account).save(<-newVault, to: /storage/VaultStorage)
-        getAuthAccount(account).link<&DogiToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, DogiToken.CollectionPublic}>(
-            /public/Vault,
-            target: /storage/VaultStorage
+    if (userVault == nil) {
+        // If no vault, create and link a new empty vault
+        let newDogiVault <- DogiToken.createEmptyVault()
+        getAccount(userAccount).save(<-newDogiVault, to: /storage/MyDogiTokenVault)
+        getAccount(userAccount).link<&DogiToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, DogiToken.CollectionPublic}>(
+            /public/DogiTokenVault,
+            target: /storage/MyDogiTokenVault
         )
-        log("Empty vault created")
-        
-        // Borrow the vault capability again to display its balance
-        let retrievedVault: &DogiToken.Vault{FungibleToken.Balance}? =
-            getAccount(account).getCapability(/public/Vault)
+        log("New DogiToken vault created")
+
+        // Access the newly created vault to confirm its balance
+        let confirmedVault: &DogiToken.Vault{FungibleToken.Balance}? =
+            getAccount(userAccount).getCapability(/public/DogiTokenVault)
                 .borrow<&DogiToken.Vault{FungibleToken.Balance}>()
-        log(retrievedVault?.balance)
+        log(confirmedVault?.balance)
     } else {
-        log("Vault already exists and is properly linked")
-        
-        // Borrow the vault capability for further checks
-        let checkVault: &DogiToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, DogiToken.CollectionPublic} =
-            getAccount(account).getCapability(/public/Vault)
+        log("Existing DogiToken vault found")
+
+        // Confirm the vault's existence and perform checks
+        let existingVault: &DogiToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, DogiToken.CollectionPublic} =
+            getAccount(userAccount).getCapability(/public/DogiTokenVault)
                 .borrow<&DogiToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, DogiToken.CollectionPublic}>()
-                ?? panic("Vault capability not found")
-        
-        // Check if the vault's UUID is in the list of vaults
-        if DogiToken.vaults.contains(checkVault.uuid) {
-            log(publicVault?.balance)
-            log("This is a DogiToken vault")
+                ?? panic("DogiToken vault capability not accessible")
+
+        // Verify if the vault's identifier is registered
+        if DogiToken.registeredVaults.contains(existingVault.uuid) {
+            log(userVault?.balance)
+            log("Verified as a registered DogiToken vault")
         } else {
-            log("This is not a DogiToken vault")
+            log("Vault not registered under DogiToken")
         }
     }
 }

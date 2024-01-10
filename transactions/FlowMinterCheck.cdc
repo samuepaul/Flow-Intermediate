@@ -3,17 +3,17 @@ import FlowToken from 0x05
 
 transaction() {
 
-  // Reference to the FlowToken Minter
-  let flowMinter: &FlowToken.Minter
+  // Reference to FlowToken's Minter resource
+  let tokenMinterRef: &FlowToken.Minter
 
-  prepare(acct: AuthAccount) {
-    // Borrow the FlowToken Minter reference and handle errors
-    self.flowMinter = acct.borrow<&FlowToken.Minter>(from: /storage/FlowMinter)
-        ?? panic("FlowToken Minter is not present")
-    log("FlowToken Minter is present")
+  prepare(userAccount: AuthAccount) {
+    // Accessing the Minter reference from the user's account
+    self.tokenMinterRef = userAccount.borrow<&FlowToken.Minter>(from: /storage/TokenMinter)
+        ?? panic("Minter resource for FlowToken is missing")
+    log("Minter resource for FlowToken successfully accessed")
   }
 
   execute {
-    // No execution logic needed in this case
+    // Execution logic is not necessary for this transaction
   }
 }

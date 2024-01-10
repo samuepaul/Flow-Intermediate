@@ -1,201 +1,145 @@
 import FungibleToken from 0x05
 
-// Official Flow Token Contract
-pub contract FlowToken: FungibleToken {
+// Official Flow Currency Contract
+pub contract FlowCurrency: FungibleToken {
 
-    // Total supply of Flow tokens in existence
-    pub var totalSupply: UFix64
+    // Total amount of Flow Currency available
+    pub var overallSupply: UFix64
 
-    // Event that is emitted when the contract is created
-    pub event TokensInitialized(initialSupply: UFix64)
+    // Event emitted upon contract creation
+    pub event ContractInitialized(supplyAtStart: UFix64)
 
-    // Event that is emitted when tokens are withdrawn from a Vault
-    pub event TokensWithdrawn(amount: UFix64, from: Address?)
+    // Event for token withdrawal from a Storage
+    pub event FlowTokensWithdrawn(quantity: UFix64, originAddress: Address?)
 
-    // Event that is emitted when tokens are deposited to a Vault
-    pub event TokensDeposited(amount: UFix64, to: Address?)
+    // Event for token deposit into a Storage
+    pub event FlowTokensDeposited(quantity: UFix64, destinationAddress: Address?)
 
-    // Event that is emitted when new tokens are minted
-    pub event TokensMinted(amount: UFix64)
+    // Event for new token generation
+    pub event NewTokensGenerated(quantity: UFix64)
 
-    // Event that is emitted when tokens are destroyed
-    pub event TokensBurned(amount: UFix64)
+    // Event for token destruction
+    pub event TokensDestroyed(quantity: UFix64)
 
-    // Event that is emitted when a new minter resource is created
-    pub event MinterCreated(allowedAmount: UFix64)
+    // Event for creating a new token generator
+    pub event GeneratorCreated(permitAmount: UFix64)
 
-    // Event that is emitted when a new burner resource is created
-    pub event BurnerCreated()
+    // Event for creating a new token burner
+    pub event BurnerEstablished()
 
-    // Vault
-    //
-    // Each user stores an instance of only the Vault in their storage
-    // The functions in the Vault and governed by the pre and post conditions
-    // in FungibleToken when they are called.
-    // The checks happen at runtime whenever a function is called.
-    //
-    // Resources can only be created in the context of the contract that they
-    // are defined in, so there is no way for a malicious user to create Vaults
-    // out of thin air. A special Minter resource needs to be defined to mint
-    // new tokens.
-    //
-    pub resource Vault: FungibleToken.Provider, FungibleToken.Receiver, FungibleToken.Balance {
+    // Storage
+    // 
+    // Each account has a unique Storage instance for managing tokens.
+    // Runtime checks occur whenever Storage functions are invoked.
+    // 
+    pub resource Storage: FungibleToken.Provider, FungibleToken.Receiver, FungibleToken.Balance {
 
-        // holds the balance of a users tokens
+        // Token balance in the Storage
         pub var balance: UFix64
 
-        // initialize the balance at resource creation time
-        init(balance: UFix64) {
-            self.balance = balance
+        // Initialize balance when creating the Storage
+        init(initialBalance: UFix64) {
+            self.balance = initialBalance
         }
 
-        // withdraw
-        //
-        // Function that takes an integer amount as an argument
-        // and withdraws that amount from the Vault.
-        // It creates a new temporary Vault that is used to hold
-        // the money that is being transferred. It returns the newly
-        // created Vault to the context that called so it can be deposited
-        // elsewhere.
-        //
-        pub fun withdraw(amount: UFix64): @FungibleToken.Vault {
-            self.balance = self.balance - amount
-            emit TokensWithdrawn(amount: amount, from: self.owner?.address)
-            return <-create Vault(balance: amount)
+        // Function to withdraw a specified amount of tokens
+        pub fun withdraw(quantity: UFix64): @FungibleToken.Vault {
+            self.balance = self.balance - quantity
+            emit FlowTokensWithdrawn(quantity: quantity, originAddress: self.owner?.address)
+            return <-create Storage(balance: quantity)
         }
 
-        // deposit
-        //
-        // Function that takes a Vault object as an argument and adds
-        // its balance to the balance of the owners Vault.
-        // It is allowed to destroy the sent Vault because the Vault
-        // was a temporary holder of the tokens. The Vault's balance has
-        // been consumed and therefore can be destroyed.
+        // Function to deposit tokens into the Storage
         pub fun deposit(from: @FungibleToken.Vault) {
-            let vault <- from as! @FlowToken.Vault
-            self.balance = self.balance + vault.balance
-            emit TokensDeposited(amount: vault.balance, to: self.owner?.address)
-            vault.balance = 0.0
-            destroy vault
+            let storage <- from as! @FlowCurrency.Storage
+            self.balance = self.balance + storage.balance
+            emit FlowTokensDeposited(quantity: storage.balance, destinationAddress: self.owner?.address)
+            storage.balance = 0.0
+            destroy storage
         }
 
         destroy() {
             if self.balance > 0.0 {
-                FlowToken.totalSupply = FlowToken.totalSupply - self.balance
+                FlowCurrency.overallSupply = FlowCurrency.overallSupply - self.balance
             }
         }
     }
 
-    // createEmptyVault
-    //
-    // Function that creates a new Vault with a balance of zero
-    // and returns it to the calling context. A user must call this function
-    // and store the returned Vault in their storage in order to allow their
-    // account to be able to receive deposits of this token type.
-    //
-    pub fun createEmptyVault(): @FungibleToken.Vault {
-        return <-create Vault(balance: 0.0)
+    // Function to create a new, empty Storage
+    pub fun initializeNewStorage(): @FungibleToken.Vault {
+        return <-create Storage(balance: 0.0)
     }
 
+    // Administrator resource for managing token creation and destruction
     pub resource Administrator {
-        // createNewMinter
-        //
-        // Function that creates and returns a new minter resource
-        //
-        pub fun createNewMinter(allowedAmount: UFix64): @Minter {
-            emit MinterCreated(allowedAmount: allowedAmount)
-            return <-create Minter(allowedAmount: allowedAmount)
+
+        // Function to create a new token generator
+        pub fun setupNewGenerator(permitAmount: UFix64): @Generator {
+            emit GeneratorCreated(permitAmount: permitAmount)
+            return <-create Generator(permitAmount: permitAmount)
         }
 
-        // createNewBurner
-        //
-        // Function that creates and returns a new burner resource
-        //
-        pub fun createNewBurner(): @Burner {
-            emit BurnerCreated()
+        // Function to establish a new token burner
+        pub fun establishNewBurner(): @Burner {
+            emit BurnerEstablished()
             return <-create Burner()
         }
     }
 
-    // Minter
-    //
-    // Resource object that token admin accounts can hold to mint new tokens.
-    //
-    pub resource Minter {
+    // Generator for creating new tokens
+    pub resource Generator {
 
-        // the amount of tokens that the minter is allowed to mint
-        pub var allowedAmount: UFix64
+        // Permitted token generation amount
+        pub var allowedGeneration: UFix64
 
-        // mintTokens
-        //
-        // Function that mints new tokens, adds them to the total supply,
-        // and returns them to the calling context.
-        //
-        pub fun mintTokens(amount: UFix64): @FlowToken.Vault {
+        // Function to generate new tokens
+        pub fun generateNewTokens(quantity: UFix64): @FlowCurrency.Storage {
             pre {
-                amount > UFix64(0): "Amount minted must be greater than zero"
-                amount <= self.allowedAmount: "Amount minted must be less than the allowed amount"
+                quantity > UFix64(0): "Must generate more than zero tokens"
+                quantity <= self.allowedGeneration: "Cannot exceed the permitted generation amount"
             }
-            FlowToken.totalSupply = FlowToken.totalSupply + amount
-            self.allowedAmount = self.allowedAmount - amount
-            emit TokensMinted(amount: amount)
-            return <-create Vault(balance: amount)
+            FlowCurrency.overallSupply = FlowCurrency.overallSupply + quantity
+            self.allowedGeneration = self.allowedGeneration - quantity
+            emit NewTokensGenerated(quantity: quantity)
+            return <-create Storage(balance: quantity)
         }
 
-        init(allowedAmount: UFix64) {
-            self.allowedAmount = allowedAmount
+        init(permitAmount: UFix64) {
+            self.allowedGeneration = permitAmount
         }
     }
 
-    // Burner
-    //
-    // Resource object that token admin accounts can hold to burn tokens.
-    //
+    // Burner for token destruction
     pub resource Burner {
 
-        // burnTokens
-        //
-        // Function that destroys a Vault instance, effectively burning the tokens.
-        //
-        // Note: the burned tokens are automatically subtracted from the
-        // total supply in the Vault destructor.
-        //
-        pub fun burnTokens(from: @FungibleToken.Vault) {
-            let vault <- from as! @FlowToken.Vault
-            let amount = vault.balance
-            destroy vault
-            emit TokensBurned(amount: amount)
+        // Function to destroy tokens
+        pub fun destroyTokens(from: @FungibleToken.Vault) {
+            let storage <- from as! @FlowCurrency.Storage
+            let destroyedAmount = storage.balance
+            destroy storage
+            emit TokensDestroyed(quantity: destroyedAmount)
         }
     }
 
     init() {
-        self.totalSupply = 0.0
+        self.overallSupply = 0.0
 
-        // Create the Vault with the total supply of tokens and save it in storage
-        //
-        let vault <- create Vault(balance: self.totalSupply)
-        self.account.save(<-vault, to: /storage/newflowTokenVault)
+        let initialStorage <- create Storage(balance: self.overallSupply)
+        self.account.save(<-initialStorage, to: /storage/FlowCurrencyStorage)
 
-        // Create a public capability to the stored Vault that only exposes
-        // the `deposit` method through the `Receiver` interface
-        //
-        self.account.link<&FlowToken.Vault{FungibleToken.Receiver}>(
-            /public/flowTokenReceiver,
-            target: /storage/newflowTokenVault
+        self.account.link<&FlowCurrency.Storage{FungibleToken.Receiver}>(
+            /public/FlowCurrencyReceiver,
+            target: /storage/FlowCurrencyStorage
         )
 
-        // Create a public capability to the stored Vault that only exposes
-        // the `balance` field through the `Balance` interface
-        //
-        self.account.link<&FlowToken.Vault{FungibleToken.Balance}>(
-            /public/flowTokenBalance,
-            target: /storage/newflowTokenVault
+        self.account.link<&FlowCurrency.Storage{FungibleToken.Balance}>(
+            /public/FlowCurrencyBalance,
+            target: /storage/FlowCurrencyStorage
         )
 
-        let admin <- create Administrator()
-        self.account.save(<-admin, to: /storage/newflowTokenAdmin)
+        let adminResource <- create Administrator()
+        self.account.save(<-adminResource, to: /storage/FlowCurrencyAdmin)
 
-        // Emit an event that shows that the contract was initialized
-        emit TokensInitialized(initialSupply: self.totalSupply)
+        emit ContractInitialized(supplyAtStart: self.overallSupply)
     }
 }

@@ -3,26 +3,26 @@ import FlowToken from 0x05
 
 transaction() {
 
-    let flowTokenVault: &FlowToken.Vault?
-    let account: AuthAccount
+    let tokenVault: &FlowToken.Vault?
+    let transactionAccount: AuthAccount
 
-    prepare(acct: AuthAccount) {
-        // Borrow the FlowToken vault reference if it exists
-        self.flowTokenVault = acct.getCapability(/public/FlowVault)
+    prepare(userAccount: AuthAccount) {
+        // Attempt to access the FlowToken vault capability
+        self.tokenVault = userAccount.getCapability(/public/TokenVault)
             .borrow<&FlowToken.Vault>()
 
-        self.account = acct
+        self.transactionAccount = userAccount
     }
 
     execute {
-        if self.flowTokenVault == nil {
-            // If the FlowToken vault doesn't exist, create and link it
-            let newVault <- FlowToken.createEmptyVault()
-            self.account.save(<-newVault, to: /storage/FlowVault)
-            self.account.link<&FlowToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, FungibleToken.Provider}>(/public/FlowVault, target: /storage/FlowVault)
-            log("Empty FlowToken vault created and linked")
+        if self.tokenVault == nil {
+            // Create and link a new FlowToken vault if it's not present
+            let newlyCreatedVault <- FlowToken.createVault()
+            self.transactionAccount.save(<-newlyCreatedVault, to: /storage/TokenVault)
+            self.transactionAccount.link<&FlowToken.Vault{FungibleToken.Balance, FungibleToken.Receiver, FungibleToken.Provider}>(/public/TokenVault, target: /storage/TokenVault)
+            log("A new FlowToken vault has been created and linked successfully")
         } else {
-            log("FlowToken vault already exists and is properly linked")
+            log("Existing FlowToken vault found")
         }
     }
 }

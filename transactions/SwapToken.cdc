@@ -1,17 +1,17 @@
-import SwapToken from 0x05
+import TokenExchanger from 0x05
 
-transaction(amount: UFix64) {
+transaction(swapQuantity: UFix64) {
 
-    // Define the signer account
-    let signer: AuthAccount
+    // Reference to the authorized account performing the transaction
+    let authorizedAccount: AuthAccount
 
-    prepare(acct: AuthAccount) {
-        self.signer = acct
+    prepare(transactionAccount: AuthAccount) {
+        self.authorizedAccount = transactionAccount
     }
 
     execute {
-        // Call the SwapToken contract to swap tokens
-        SwapToken.swapTokens(signer: self.signer, swapAmount: amount)
-        log("Swap done")
+        // Invoke the token swap functionality from the TokenExchanger contract
+        TokenExchanger.exchangeTokens(account: self.authorizedAccount, exchangeAmount: swapQuantity)
+        log("Token exchange completed successfully")
     }
 }
