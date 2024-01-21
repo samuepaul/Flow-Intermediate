@@ -1,7 +1,7 @@
 import FungibleToken from 0x05
 
 // Official Flow Currency Contract
-pub contract FlowCurrency: FungibleToken {
+pub contract FlowToken: FungibleToken {
 
     // Total amount of Flow Currency available
     pub var overallSupply: UFix64
@@ -46,12 +46,12 @@ pub contract FlowCurrency: FungibleToken {
         pub fun withdraw(quantity: UFix64): @FungibleToken.Vault {
             self.balance = self.balance - quantity
             emit FlowTokensWithdrawn(quantity: quantity, originAddress: self.owner?.address)
-            return <-create Storage(balance: quantity)
+            return: <-create Storage(balance: 0.0)
         }
 
         // Function to deposit tokens into the Storage
         pub fun deposit(from: @FungibleToken.Vault) {
-            let storage <- from as! @FlowCurrency.Storage
+            let storage <- from as! @FlowToken.Storage
             self.balance = self.balance + storage.balance
             emit FlowTokensDeposited(quantity: storage.balance, destinationAddress: self.owner?.address)
             storage.balance = 0.0
@@ -60,7 +60,7 @@ pub contract FlowCurrency: FungibleToken {
 
         destroy() {
             if self.balance > 0.0 {
-                FlowCurrency.overallSupply = FlowCurrency.overallSupply - self.balance
+                FlowToken.overallSupply = FlowToken.overallSupply - self.balance
             }
         }
     }
@@ -93,15 +93,15 @@ pub contract FlowCurrency: FungibleToken {
         pub var allowedGeneration: UFix64
 
         // Function to generate new tokens
-        pub fun generateNewTokens(quantity: UFix64): @FlowCurrency.Storage {
+        pub fun generateNewTokens(quantity: UFix64): @FlowToken.Storage {
             pre {
                 quantity > UFix64(0): "Must generate more than zero tokens"
                 quantity <= self.allowedGeneration: "Cannot exceed the permitted generation amount"
             }
-            FlowCurrency.overallSupply = FlowCurrency.overallSupply + quantity
+            FlowToken.overallSupply = FlowToken.overallSupply + quantity
             self.allowedGeneration = self.allowedGeneration - quantity
             emit NewTokensGenerated(quantity: quantity)
-            return <-create Storage(balance: quantity)
+            return <-create Storage(initialbalance: quantity)
         }
 
         init(permitAmount: UFix64) {
@@ -114,7 +114,7 @@ pub contract FlowCurrency: FungibleToken {
 
         // Function to destroy tokens
         pub fun destroyTokens(from: @FungibleToken.Vault) {
-            let storage <- from as! @FlowCurrency.Storage
+            let storage <- from as! @FlowToken.Storage
             let destroyedAmount = storage.balance
             destroy storage
             emit TokensDestroyed(quantity: destroyedAmount)
@@ -124,21 +124,21 @@ pub contract FlowCurrency: FungibleToken {
     init() {
         self.overallSupply = 0.0
 
-        let initialStorage <- create Storage(balance: self.overallSupply)
-        self.account.save(<-initialStorage, to: /storage/FlowCurrencyStorage)
+        let initialStorage <- create Storage(initialbalance: self.overallSupply)
+        self.account.save(<-initialStorage, to: /storage/FlowtokenStorage)
 
-        self.account.link<&FlowCurrency.Storage{FungibleToken.Receiver}>(
+        self.account.link<&Flowtoken.Storage{FungibleToken.Receiver}>(
             /public/FlowCurrencyReceiver,
             target: /storage/FlowCurrencyStorage
         )
 
-        self.account.link<&FlowCurrency.Storage{FungibleToken.Balance}>(
-            /public/FlowCurrencyBalance,
-            target: /storage/FlowCurrencyStorage
+        self.account.link<&Flowtoken.Storage{FungibleToken.Balance}>(
+            /public/FlowtokenBalance,
+            target: /storage/FlowtokenStorage
         )
 
         let adminResource <- create Administrator()
-        self.account.save(<-adminResource, to: /storage/FlowCurrencyAdmin)
+        self.account.save(<-adminResource, to: /storage/FlowTokenAdmin)
 
         emit ContractInitialized(supplyAtStart: self.overallSupply)
     }

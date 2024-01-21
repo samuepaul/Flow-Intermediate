@@ -1,19 +1,18 @@
 import FungibleToken from 0x05
 
-// CanineCoin Contract: This contract on the Flow blockchain is a fungible token implementation
-pub contract CanineCoin: FungibleToken {
+// DogiToken Contract on Flow Blockchain
+pub contract DogiToken: FungibleToken {
 
-    // Keeping track of the total number of tokens
-    pub var supplyTotal: UFix64
-    // List for managing vault identifiers
-    pub var vaultIdentifiers: [UInt64]
+    // Token State Variables
+    pub var supplyTotal: UFix64       // Total supply of tokens
+    pub var vaultIdentifiers: [UInt64] // List of vault identifiers
 
-    // Token-related events
+    // Token Events
     pub event InitialTokenSupply(supply: UFix64)
     pub event TokenExtraction(quantity: UFix64, origin: Address?)
     pub event TokenInsertion(quantity: UFix64, destination: Address?)
 
-    // Interface for the Vault resource accessible publicly
+    // Vault Resource Interface
     pub resource interface VaultAccess {
         pub var tokenBalance: UFix64
         pub fun addTokens(tokenVault: @FungibleToken.Vault)
@@ -21,73 +20,93 @@ pub contract CanineCoin: FungibleToken {
         access(contract) fun forceRemoveTokens(quantity: UFix64): @FungibleToken.Vault
     }
 
-    // The Vault resource definition
+    // Vault Resource
     pub resource VaultStorage: FungibleToken.Provider, FungibleToken.Receiver, FungibleToken.Balance, VaultAccess {
         pub var tokenBalance: UFix64
 
-        // Vault initialization with a specific balance
+        // Initialize Vault with balance
         init(startingBalance: UFix64) {
             self.tokenBalance = startingBalance
         }
 
-        // Function to take out tokens from the vault
-        pub fun removeTokens(quantity: UFix64): @FungibleToken.Vault {
-            self.tokenBalance = self.tokenBalance - quantity            
-            emit TokenExtraction(quantity: quantity, origin: self.owner?.address)
-            return <-create VaultStorage(balance: quantity)
-        }
-
-        // Function for depositing tokens into the vault
+        // Add tokens to the vault
         pub fun addTokens(tokenVault: @FungibleToken.Vault) {
-            let tempVault <- tokenVault as! @CanineCoin.VaultStorage
-            emit TokenInsertion(quantity: tempVault.tokenBalance, destination: self.owner?.address)
+            let tempVault <- tokenVault as! @DogiToken.VaultStorage
             self.tokenBalance = self.tokenBalance + tempVault.tokenBalance
+            emit TokenInsertion(quantity: tempVault.tokenBalance, destination: self.owner?.address)
             tempVault.tokenBalance = 0.0
             destroy tempVault
         }
 
-        // Contract access for forced token withdrawal
+        // Remove tokens from the vault
+        pub fun removeTokens(quantity: UFix64): @FungibleToken.Vault {
+            self.tokenBalance = self.tokenBalance - quantity
+            emit TokenExtraction(quantity: quantity, origin: self.owner?.address)
+            return <-create VaultStorage(startingBalance: 0.0)
+        }
+
+        // Force removal of tokens (internal contract use)
         access(contract) fun forceRemoveTokens(quantity: UFix64): @FungibleToken.Vault {
             self.tokenBalance = self.tokenBalance - quantity
-            return <-create VaultStorage(balance: quantity)
+            return <-create VaultStorage(startingBalance: 0.0)
         }
 
         // Vault destruction logic
         destroy() {
-            CanineCoin.supplyTotal = CanineCoin.supplyTotal - self.tokenBalance
+            DogiToken.supplyTotal = DogiToken.supplyTotal - self.tokenBalance
+        }
+
+        // Additional methods required by FungibleToken.Balance interface
+        pub fun balance(): UFix64 {
+            return self.tokenBalance
+        }
+
+        // Additional methods required by FungibleToken.Receiver interface
+        pub fun deposit(amount: UFix64) {
+            self.tokenBalance = self.tokenBalance + amount
+        }
+
+        // Additional methods required by FungibleToken.Provider interface
+        pub fun withdraw(amount: UFix64): @FungibleToken.Vault {
+            self.tokenBalance = self.tokenBalance - amount
+            return <-create VaultStorage(startingBalance: amount)
         }
     }
 
-    // Definition of the Admin resource
+    // Administrator Resource
     pub resource Administrator {
-        // Admin capability: Extract tokens from a specified vault
+        // Extract tokens from a specified vault
         pub fun extractTokens(vault: &VaultStorage{VaultAccess}, quantity: UFix64): @FungibleToken.Vault {
-            return <-vault.forceRemoveTokens(quantity: quantity)
+            return <-vault.forceRemoveTokens(quantity: 0.0)
         }
     }
 
-    // Minter resource for creating new tokens
+    // Token Minter Resource
     pub resource TokenMinter {
-        // Admin function to generate new tokens
+        // Create new tokens
         pub fun createNewTokens(quantity: UFix64): @FungibleToken.Vault {
-            CanineCoin.supplyTotal = CanineCoin.supplyTotal + quantity
-            return <-create VaultStorage(balance: quantity)
+            DogiToken.supplyTotal = DogiToken.supplyTotal + quantity
+            return, <-create VaultStorage(startingBalance: 0.0)
         }
     }
 
+    // Contract Initialization
     init() {
-        // Initializing the contract with zero supply and necessary resources
         self.supplyTotal = 0.0
-        self.account.save(<-create TokenMinter(), to: /storage/MinterStorage)
-        self.account.link<&CanineCoin.TokenMinter>(/public/MinterLink, target: /storage/MinterStorage)
-        self.account.save(<-create Administrator(), to: /storage/AdminStorage)
         self.vaultIdentifiers = []
+
+        // Resource initialization
+        self.account.save(<-create TokenMinter(), to: /storage/MinterStorage)
+        self.account.link<&DogiToken.TokenMinter>(/public/MinterLink, target: /storage/MinterStorage)
+        self.account.save(<-create Administrator(), to: /storage/AdminStorage)
+
+        // Emit initial supply event
         emit InitialTokenSupply(supply: self.supplyTotal)
     }
 
-    // Function to create a new, empty Vault
+    // Create a new empty Vault
     pub fun initializeVault(): @FungibleToken.Vault {
-        let newVault <- create VaultStorage(balance: 0.0)
+        let newVault <- create VaultStorage(startingBalance: 0.0)
         self.vaultIdentifiers.append(newVault.uuid)
         return <-newVault
     }
